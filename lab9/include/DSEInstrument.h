@@ -14,6 +14,8 @@ std::map<Value *, int> RegisterMap;
 int BranchID = 0;
 std::map<Instruction *, int> BranchMap;
 
+void instrumentValue(Module *Mod, Value *Val, Instruction *I);
+
 int getRegisterID(Value *I) {
   if (RegisterMap.find(I) == RegisterMap.end()) {
     RegisterMap[I] = RegisterMap.size();

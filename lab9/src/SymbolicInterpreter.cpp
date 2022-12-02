@@ -2,6 +2,7 @@
 
 #include <ctime>
 #include <fstream>
+using namespace std;
 
 std::ostream &operator<<(std::ostream &OS, const Address &A) {
   if (A.Type == A.Memory) {
@@ -81,6 +82,7 @@ extern "C" void __DSE_Init__() {
 extern "C" void __DSE_Input__(int *X, int ID) { *X = (int)SI.NewInput(X, ID); }
 
 extern "C" void __DSE_Branch__(int BID, int RID, int B) {
+  cout << "LINE84\n";
   MemoryTy &Mem = SI.getMemory();
   Address Addr(RID);
   z3::expr SE = Mem.at(Addr);

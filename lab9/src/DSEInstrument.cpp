@@ -25,6 +25,9 @@ static const char *DSE_BINOP_FUNCTION_NAME = "__DSE_BinOp__";
  * @param I Instrumentation location
  */
 void instrumentDSEInit(Module *Mod, Function &F, Instruction &I) {
+  std::vector<Value *> Args = {};
+  auto Fun = Mod->getFunction(DSE_INIT_FUNCTION_NAME);
+  CallInst::Create(Fun, Args, "", &I);
 }
 
 /**
@@ -51,6 +54,16 @@ void instrumentAlloca(Module *Mod, AllocaInst *AI) {
  * @param SI Instrumentation location
  */
 void instrumentStore(Module *Mod, StoreInst *SI) {
+  // instrumentValue(Mod, SI->getPointerOperand(), SI);
+  // auto &Context = Mod->getContext();
+  // auto *Int32Type = Type::getInt32Ty(Context);
+
+  // Value *VarID = ConstantInt::get(Int32Type, getRegisterID(SI));
+  // instrumentValue(Mod, SI->getPointerOperand(), SI);
+  // std::vector<Value *> Args = {VarID};
+
+  // auto Fun = Mod->getFunction(DSE_STORE_FUNCTION_NAME);
+  // CallInst::Create(Fun, Args, "", SI);
   std::vector<Value *> Args = {SI->getPointerOperand()};
 
   auto Fun = Mod->getFunction(DSE_STORE_FUNCTION_NAME);
@@ -66,6 +79,13 @@ void instrumentStore(Module *Mod, StoreInst *SI) {
  * @param LI Instrumentation location
  */
 void instrumentLoad(Module *Mod, LoadInst *LI) {
+  // std::vector<Value *> Args = {LI, LI->getPointerOperand()};
+  auto &Context = Mod->getContext();
+  auto *Int32Type = Type::getInt32Ty(Context);
+  std::vector<Value *> Args = {ConstantInt::get(Int32Type, getRegisterID(LI)), LI->getPointerOperand()};
+
+  auto Fn = Mod->getFunction(DSE_LOAD_FUNCTION_NAME);
+  CallInst::Create(Fn, Args, "", LI);
 }
 
 /**
@@ -78,6 +98,11 @@ void instrumentLoad(Module *Mod, LoadInst *LI) {
  * @param I Instrumentation location.
  */
 void instrumentConstantValue(Module *Mod, ConstantInt *ConstInt, Instruction *I) {
+  // auto &Context = Mod->getContext();
+  // auto *Int32Type = Type::getInt32Ty(Context);
+  std::vector<Value *> Args = {ConstInt}; 
+  auto Fn = Mod->getFunction(DSE_CONST_FUNCTION_NAME);
+  CallInst::Create(Fn, Args, "", I);
 }
 
 /**
@@ -90,6 +115,9 @@ void instrumentConstantValue(Module *Mod, ConstantInt *ConstInt, Instruction *I)
  * @param I Instrumentation location
  */
 void instrumentRegister(Module *Mod, Value *Var, Instruction *I) {
+  std::vector<Value *> Args = {Var};
+  auto Fn = Mod->getFunction(DSE_REGISTER_FUNCTION_NAME);
+  CallInst::Create(Fn, Args, "", I);
 }
 
 /**
@@ -106,6 +134,12 @@ void instrumentRegister(Module *Mod, Value *Var, Instruction *I) {
  * @param I Instrumentation location
  */
 void instrumentValue(Module *Mod, Value *Val, Instruction *I) {
+   auto Const = dyn_cast<ConstantInt>(Val);
+   if (Const) {
+    instrumentConstantValue(Mod, Const, I);
+   } else {
+    instrumentRegister(Mod, Val, I);
+   }
 }
 
 /**
@@ -117,6 +151,19 @@ void instrumentValue(Module *Mod, Value *Val, Instruction *I) {
  * @param CI Instrumentation location
  */
 void instrumentICmp(Module *Mod, ICmpInst *CI) {
+  auto Op1 = CI->getOperand(0);
+  auto Op2 = CI->getOperand(1);
+  instrumentValue(Mod, Op1, CI);
+  instrumentValue(Mod, Op2, CI);
+
+  CmpInst::Predicate P = CI->getPredicate();
+  auto &Context = Mod->getContext();
+  auto *Int32Type = Type::getInt32Ty(Context);
+  auto PInt = ConstantInt::get(Int32Type, P);
+  auto RID = ConstantInt::get(Int32Type, getRegisterID(CI));
+  std::vector<Value *> Args = {RID, PInt};
+  auto Fn = Mod->getFunction(DSE_ICMP_FUNCTION_NAME);
+  CallInst::Create(Fn, Args, "", CI);
 }
 
 /**
@@ -128,6 +175,19 @@ void instrumentICmp(Module *Mod, ICmpInst *CI) {
  * @param BI Instrumentation location
  */
 void instrumentBranch(Module *Mod, BranchInst *BI) {
+  auto &Context = Mod->getContext();
+  auto *Int32Type = Type::getInt32Ty(Context);
+  auto IsBranch = BI->isConditional();
+  auto Cond = ConstantInt::get(Int32Type, IsBranch);
+  // auto Path = ConstantInt::get(Int32Type, 1);
+  auto Fn = Mod->getFunction(DSE_BRANCH_FUNCTION_NAME);
+
+  Value *RID = ConstantInt::get(Int32Type, getRegisterID(BI->getOperand(0)));
+  
+  // Value *BID = ConstantInt::get(Int32Type, BI);
+  std::vector<Value *> Args = {Cond, RID, BI->getCondition()};
+  outs() << "LINE189\n";
+  CallInst::Create(Fn, Args, "", BI);
 }
 
 /**
@@ -139,6 +199,20 @@ void instrumentBranch(Module *Mod, BranchInst *BI) {
  * @param BO Instrumentation location
  */
 void instrumentBinOp(Module *Mod, BinaryOperator *BO) {
+  auto Op1 = BO->getOperand(0);
+  auto Op2 = BO->getOperand(1);
+  instrumentValue(Mod, Op1, BO);
+  instrumentValue(Mod, Op2, BO);
+
+  auto &Context = Mod->getContext();
+  auto *Int32Type = Type::getInt32Ty(Context);
+
+  auto OpType = BO->getOpcode();
+  auto OpInt = ConstantInt::get(Int32Type, OpType);
+  std::vector<Value *> Args = {ConstantInt::get(Int32Type, getRegisterID(BO)), OpInt};
+  
+  auto Fn = Mod->getFunction(DSE_BINOP_FUNCTION_NAME);
+  CallInst::Create(Fn, Args, "", BO);
 }
 
 /**
@@ -156,18 +230,26 @@ void instrumentBinOp(Module *Mod, BinaryOperator *BO) {
 void instrument(Module *Mod, Instruction *I) {
   if (AllocaInst *AI = dyn_cast<AllocaInst>(I)) {
     // TODO: Implement.
+    instrumentAlloca(Mod, AI);
   } else if (StoreInst *SI = dyn_cast<StoreInst>(I)) {
     // TODO: Implement.
+    instrumentValue(Mod, SI->getOperand(0), SI);
+    instrumentStore(Mod, SI);
   } else if (LoadInst *LI = dyn_cast<LoadInst>(I)) {
     // TODO: Implement.
+    instrumentLoad(Mod, LI);
   } else if (ICmpInst *CI = dyn_cast<ICmpInst>(I)) {
     // TODO: Implement.
+    instrumentICmp(Mod, CI);
+
   } else if (BranchInst *BI = dyn_cast<BranchInst>(I)) {
     if (BI->isUnconditional())
       return;
     // TODO: Implement.
+    instrumentBranch(Mod, BI);
   } else if (BinaryOperator *BO = dyn_cast<BinaryOperator>(I)) {
     // TODO: Implement.
+    instrumentBinOp(Mod, BO);
   }
 }
 
@@ -193,6 +275,7 @@ bool DSEInstrument::runOnFunction(Function &F) {
 
   if (F.getName().equals("main")) {
     // TODO: Initilize the DSE Engine
+    instrumentDSEInit(Mod, F, *inst_begin(F));
   }
 
   // Instrument each instruction
