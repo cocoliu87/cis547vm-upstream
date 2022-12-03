@@ -12,4 +12,7 @@
  * @param OldVec Vector of Z3 expressions.
  */
 void searchStrategy(z3::expr_vector &OldVec) {
+    auto Last = OldVec.back();
+    OldVec.pop_back();
+    OldVec.push_back(!Last);
 }

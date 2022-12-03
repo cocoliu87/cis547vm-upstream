@@ -81,6 +81,7 @@ extern "C" void __DSE_ICmp__(int R, int Op) {
   SI.getStack().pop();
   z3::expr SE1 = eval(SI.getStack().top());
   SI.getStack().pop();
+  Mem.erase(Addr);
   switch (Op) {
     case CmpInst::Predicate::ICMP_EQ:
       Mem.insert(std::make_pair(Addr, SE1 == SE2));
@@ -124,7 +125,7 @@ extern "C" void __DSE_BinOp__(int R, int Op) {
   SI.getStack().pop();
   z3::expr SE1 = eval(SI.getStack().top());
   SI.getStack().pop();
-
+  Mem.erase(Addr);
   switch (Op){
       case Instruction::BinaryOps::Add:
         Mem.insert(std::make_pair(Addr, SE1 + SE2));

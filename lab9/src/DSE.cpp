@@ -53,6 +53,7 @@ void generateInput() {
     searchStrategy(Vec);
 
     for (const auto &E : Vec) {
+      cout << "E in Vec " << E << "\n";
       Solver.add(E);
     }
     z3::check_result Result = Solver.check();
@@ -81,7 +82,6 @@ int main(int argc, char **argv) {
   if (argc == 3) {
     MaxIter = atoi(argv[2]);
   }
-  cout << "LINE 84 in main\n";
   struct stat Buffer;
   int Iter = 0;
   while (Iter < MaxIter) {

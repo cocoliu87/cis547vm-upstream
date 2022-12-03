@@ -115,7 +115,11 @@ void instrumentConstantValue(Module *Mod, ConstantInt *ConstInt, Instruction *I)
  * @param I Instrumentation location
  */
 void instrumentRegister(Module *Mod, Value *Var, Instruction *I) {
-  std::vector<Value *> Args = {Var};
+  auto &Context = Mod->getContext();
+  auto *Int32Type = Type::getInt32Ty(Context);
+  auto RID = ConstantInt::get(Int32Type, getRegisterID(Var));
+
+  std::vector<Value *> Args = {RID};
   auto Fn = Mod->getFunction(DSE_REGISTER_FUNCTION_NAME);
   CallInst::Create(Fn, Args, "", I);
 }
@@ -161,6 +165,7 @@ void instrumentICmp(Module *Mod, ICmpInst *CI) {
   auto *Int32Type = Type::getInt32Ty(Context);
   auto PInt = ConstantInt::get(Int32Type, P);
   auto RID = ConstantInt::get(Int32Type, getRegisterID(CI));
+  // instrumentRegister(Mod, RID, CI);
   std::vector<Value *> Args = {RID, PInt};
   auto Fn = Mod->getFunction(DSE_ICMP_FUNCTION_NAME);
   CallInst::Create(Fn, Args, "", CI);
@@ -177,16 +182,15 @@ void instrumentICmp(Module *Mod, ICmpInst *CI) {
 void instrumentBranch(Module *Mod, BranchInst *BI) {
   auto &Context = Mod->getContext();
   auto *Int32Type = Type::getInt32Ty(Context);
-  auto IsBranch = BI->isConditional();
-  auto Cond = ConstantInt::get(Int32Type, IsBranch);
+  // auto IsBranch = BI->isConditional();
+  auto Cond = ConstantInt::get(Int32Type, getBranchID(BI));
   // auto Path = ConstantInt::get(Int32Type, 1);
   auto Fn = Mod->getFunction(DSE_BRANCH_FUNCTION_NAME);
 
-  Value *RID = ConstantInt::get(Int32Type, getRegisterID(BI->getOperand(0)));
+  Value *RID = ConstantInt::get(Int32Type, getRegisterID(BI->getCondition()));
   
   // Value *BID = ConstantInt::get(Int32Type, BI);
   std::vector<Value *> Args = {Cond, RID, BI->getCondition()};
-  outs() << "LINE189\n";
   CallInst::Create(Fn, Args, "", BI);
 }
 
@@ -237,6 +241,7 @@ void instrument(Module *Mod, Instruction *I) {
     instrumentStore(Mod, SI);
   } else if (LoadInst *LI = dyn_cast<LoadInst>(I)) {
     // TODO: Implement.
+    // instrumentRegister(Mod, LI->getOperand(0), LI);
     instrumentLoad(Mod, LI);
   } else if (ICmpInst *CI = dyn_cast<ICmpInst>(I)) {
     // TODO: Implement.
@@ -246,6 +251,7 @@ void instrument(Module *Mod, Instruction *I) {
     if (BI->isUnconditional())
       return;
     // TODO: Implement.
+    instrumentRegister(Mod, BI->getCondition(), BI);
     instrumentBranch(Mod, BI);
   } else if (BinaryOperator *BO = dyn_cast<BinaryOperator>(I)) {
     // TODO: Implement.
