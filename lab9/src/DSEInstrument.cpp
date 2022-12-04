@@ -1,4 +1,5 @@
 #include "DSEInstrument.h"
+#include <iostream>
 
 using namespace llvm;
 
@@ -14,6 +15,27 @@ static const char *DSE_ICMP_FUNCTION_NAME = "__DSE_ICmp__";
 static const char *DSE_BRANCH_FUNCTION_NAME = "__DSE_Branch__";
 static const char *DSE_BINOP_FUNCTION_NAME = "__DSE_BinOp__";
 
+
+const char *WHITESPACES = " \t\n\r";
+const size_t VARIABLE_PADDED_LEN = 8;
+
+std::string variable(const Value *Val) {
+  std::string Code;
+  raw_string_ostream SS(Code);
+  Val->print(SS);
+  Code.erase(0, Code.find_first_not_of(WHITESPACES));
+  auto RetVal = Code.substr(0, Code.find_first_of(WHITESPACES));
+  if (RetVal == "ret" || RetVal == "br" || RetVal == "store") {
+    return Code;
+  }
+  if (RetVal == "i1" || RetVal == "i8" || RetVal == "i32" || RetVal == "i64") {
+    RetVal = Code;
+  }
+  for (auto i = RetVal.size(); i < VARIABLE_PADDED_LEN; i++) {
+    RetVal += " ";
+  }
+  return RetVal;
+}
 
 /**
  * @brief Instrument to initialize the Z3 solver.
@@ -118,6 +140,7 @@ void instrumentRegister(Module *Mod, Value *Var, Instruction *I) {
   auto &Context = Mod->getContext();
   auto *Int32Type = Type::getInt32Ty(Context);
   auto RID = ConstantInt::get(Int32Type, getRegisterID(Var));
+  std::cout << "Get Register ID " << RID << " for DSE_REGISTER\n";
 
   std::vector<Value *> Args = {RID};
   auto Fn = Mod->getFunction(DSE_REGISTER_FUNCTION_NAME);
@@ -142,6 +165,7 @@ void instrumentValue(Module *Mod, Value *Val, Instruction *I) {
    if (Const) {
     instrumentConstantValue(Mod, Const, I);
    } else {
+    std::cout << "Register for " << variable(Val) << "\n";
     instrumentRegister(Mod, Val, I);
    }
 }
@@ -157,6 +181,7 @@ void instrumentValue(Module *Mod, Value *Val, Instruction *I) {
 void instrumentICmp(Module *Mod, ICmpInst *CI) {
   auto Op1 = CI->getOperand(0);
   auto Op2 = CI->getOperand(1);
+  std::cout << "***ICMP Op1 - " << variable(Op1) << " Op2 - " << variable(Op2) << "\n";
   instrumentValue(Mod, Op1, CI);
   instrumentValue(Mod, Op2, CI);
 
@@ -183,14 +208,13 @@ void instrumentBranch(Module *Mod, BranchInst *BI) {
   auto &Context = Mod->getContext();
   auto *Int32Type = Type::getInt32Ty(Context);
   // auto IsBranch = BI->isConditional();
-  auto Cond = ConstantInt::get(Int32Type, getBranchID(BI));
+  auto BID = ConstantInt::get(Int32Type, getBranchID(BI));
   // auto Path = ConstantInt::get(Int32Type, 1);
   auto Fn = Mod->getFunction(DSE_BRANCH_FUNCTION_NAME);
 
-  Value *RID = ConstantInt::get(Int32Type, getRegisterID(BI->getCondition()));
-  
+  Value *RID = ConstantInt::get(Int32Type, getRegisterID(BI->getOperand(0)));  
   // Value *BID = ConstantInt::get(Int32Type, BI);
-  std::vector<Value *> Args = {Cond, RID, BI->getCondition()};
+  std::vector<Value *> Args = {BID, RID, BI->getCondition()};
   CallInst::Create(Fn, Args, "", BI);
 }
 

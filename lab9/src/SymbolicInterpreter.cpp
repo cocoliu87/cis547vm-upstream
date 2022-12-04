@@ -6,8 +6,10 @@ using namespace std;
 
 std::ostream &operator<<(std::ostream &OS, const Address &A) {
   if (A.Type == A.Memory) {
+    cout << "Operator print MEM addr " << A.Addr << "\n";
     OS << A.Addr;
   } else {
+    cout << "Operator print Register addr " << A.Addr << "\n";
     OS << "R" << A.Addr;
   }
   return OS;
@@ -87,16 +89,19 @@ extern "C" void __DSE_Branch__(int BID, int RID, int B) {
   z3::expr SE = Mem.at(Addr);
   z3::expr Cond =
       B ? SI.getContext().bool_val(true) : SI.getContext().bool_val(false);
+  cout << "In DSE_Branch, having BID - " << BID << " SE - " << SE << " Cond - " << Cond << "\n";
   SI.getPathCondition().push_back(std::make_pair(BID, SE == Cond));
 }
 
 extern "C" void __DSE_Const__(int X) {
   z3::expr SE = SI.getContext().int_val(X);
+  cout << "DSE_Const push " << SE << "\n";
   SI.getStack().push(SE);
 }
 
 extern "C" void __DSE_Register__(int X) {
   std::string Name = "R" + std::to_string(X);
   z3::expr SE = SI.getContext().int_const(Name.c_str());
+  cout << "DSE_Register push " << SE << "\n";
   SI.getStack().push(SE);
 }

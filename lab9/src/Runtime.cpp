@@ -75,13 +75,17 @@ extern "C" void __DSE_Load__(int Y, int *X) {
  * @param Op Operator Kind
  */
 extern "C" void __DSE_ICmp__(int R, int Op) {
+  std::cout << "__DSE_ICmp__ Args " << R << " and " << Op << "\n";
   MemoryTy &Mem = SI.getMemory();
   Address Addr(R);
   z3::expr SE2 = eval(SI.getStack().top());
   SI.getStack().pop();
-  z3::expr SE1 = eval(SI.getStack().top());
+  // z3::expr SE1 = eval(SI.getStack().top());
+  auto SE1 = SI.getStack().top();
+  Address SE1Addr(SE1);
   SI.getStack().pop();
   Mem.erase(Addr);
+  std::cout << "DSE_ICMP inserts addr - " << Addr << " for SE1 - " << SE1 << " SE2 - " << SE2 << "\n";
   switch (Op) {
     case CmpInst::Predicate::ICMP_EQ:
       Mem.insert(std::make_pair(Addr, SE1 == SE2));
