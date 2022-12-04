@@ -104,6 +104,7 @@ void instrumentLoad(Module *Mod, LoadInst *LI) {
   // std::vector<Value *> Args = {LI, LI->getPointerOperand()};
   auto &Context = Mod->getContext();
   auto *Int32Type = Type::getInt32Ty(Context);
+  
   std::vector<Value *> Args = {ConstantInt::get(Int32Type, getRegisterID(LI)), LI->getPointerOperand()};
 
   auto Fn = Mod->getFunction(DSE_LOAD_FUNCTION_NAME);
@@ -140,7 +141,7 @@ void instrumentRegister(Module *Mod, Value *Var, Instruction *I) {
   auto &Context = Mod->getContext();
   auto *Int32Type = Type::getInt32Ty(Context);
   auto RID = ConstantInt::get(Int32Type, getRegisterID(Var));
-  std::cout << "Get Register ID " << RID << " for DSE_REGISTER\n";
+  // std::cout << "Get Register ID " << RID << " for DSE_REGISTER\n";
 
   std::vector<Value *> Args = {RID};
   auto Fn = Mod->getFunction(DSE_REGISTER_FUNCTION_NAME);
@@ -165,7 +166,7 @@ void instrumentValue(Module *Mod, Value *Val, Instruction *I) {
    if (Const) {
     instrumentConstantValue(Mod, Const, I);
    } else {
-    std::cout << "Register for " << variable(Val) << "\n";
+    // std::cout << "Register for " << variable(Val) << "\n";
     instrumentRegister(Mod, Val, I);
    }
 }
@@ -181,7 +182,7 @@ void instrumentValue(Module *Mod, Value *Val, Instruction *I) {
 void instrumentICmp(Module *Mod, ICmpInst *CI) {
   auto Op1 = CI->getOperand(0);
   auto Op2 = CI->getOperand(1);
-  std::cout << "***ICMP Op1 - " << variable(Op1) << " Op2 - " << variable(Op2) << "\n";
+  // std::cout << "***ICMP Op1 - " << variable(Op1) << " Op2 - " << variable(Op2) << "\n";
   instrumentValue(Mod, Op1, CI);
   instrumentValue(Mod, Op2, CI);
 
@@ -275,7 +276,7 @@ void instrument(Module *Mod, Instruction *I) {
     if (BI->isUnconditional())
       return;
     // TODO: Implement.
-    instrumentRegister(Mod, BI->getCondition(), BI);
+    // instrumentRegister(Mod, BI->getCondition(), BI);
     instrumentBranch(Mod, BI);
   } else if (BinaryOperator *BO = dyn_cast<BinaryOperator>(I)) {
     // TODO: Implement.

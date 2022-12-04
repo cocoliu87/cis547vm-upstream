@@ -12,16 +12,22 @@ z3::expr eval(z3::expr &E) {
   if (E.kind() == Z3_NUMERAL_AST) {
     return E;
   } else {
+    // std::cout << "--> Check mem <-- for " << E << "\n";
     MemoryTy Mem = SI.getMemory();
     Address Register(E);
+
+    for (auto m: Mem) {
+      // std::cout << "Mem is like " << m.first << " -> " << m.second << "\n";
+    }
     if (Mem.find(Register) != Mem.end()) {
       return Mem.at(Register);
     } else {
       std::cout << "Warning: Cannot find register " << Register << " in memory "
                 << std::endl;
       return E;
-    }
+    }   
   }
+  
 }
 
 /**
@@ -75,17 +81,18 @@ extern "C" void __DSE_Load__(int Y, int *X) {
  * @param Op Operator Kind
  */
 extern "C" void __DSE_ICmp__(int R, int Op) {
-  std::cout << "__DSE_ICmp__ Args " << R << " and " << Op << "\n";
+  // std::cout << "__DSE_ICmp__ Args " << R << " and " << Op << "\n";
   MemoryTy &Mem = SI.getMemory();
   Address Addr(R);
-  z3::expr SE2 = eval(SI.getStack().top());
+  z3::expr SE2 = SI.getStack().top();
   SI.getStack().pop();
-  // z3::expr SE1 = eval(SI.getStack().top());
-  auto SE1 = SI.getStack().top();
-  Address SE1Addr(SE1);
+  auto SE1 = SI.getStack().top(); // get Rx
+
+  // Address SE1Addr(SE1);
   SI.getStack().pop();
   Mem.erase(Addr);
-  std::cout << "DSE_ICMP inserts addr - " << Addr << " for SE1 - " << SE1 << " SE2 - " << SE2 << "\n";
+  // Mem.erase(SE1Addr);
+  // std::cout << "DSE_ICMP inserts addr - " << Addr << " for SE1 - " << SE1 << " SE2 - " << SE2 << "\n";
   switch (Op) {
     case CmpInst::Predicate::ICMP_EQ:
       Mem.insert(std::make_pair(Addr, SE1 == SE2));
@@ -125,11 +132,17 @@ extern "C" void __DSE_ICmp__(int R, int Op) {
 extern "C" void __DSE_BinOp__(int R, int Op) {
   MemoryTy &Mem = SI.getMemory();
   Address Addr(R);
-  z3::expr SE2 = eval(SI.getStack().top());
+  // z3::expr SE2 = eval(SI.getStack().top());
+  auto SE2 = SI.getStack().top();
   SI.getStack().pop();
-  z3::expr SE1 = eval(SI.getStack().top());
+  // Address SE2Addr(SE2);
+  // z3::expr SE1 = eval(SI.getStack().top());
+  auto SE1 = SI.getStack().top();
   SI.getStack().pop();
+  // Address SE1Addr(SE1);
   Mem.erase(Addr);
+  // Mem.erase(SE1Addr);
+  // Mem.erase(SE2Addr);
   switch (Op){
       case Instruction::BinaryOps::Add:
         Mem.insert(std::make_pair(Addr, SE1 + SE2));
