@@ -49,7 +49,6 @@ void generateInput() {
   z3::expr_vector Vec = Ctx.parse_file(FormulaFile);
 
   while (true) {
-    // cout << "Before search Strtegy, vec length " << Vec.size() << "\n"; 
     searchStrategy(Vec);
 
     for (const auto &E : Vec) {
@@ -57,7 +56,7 @@ void generateInput() {
       Solver.add(E);
     }
     z3::check_result Result = Solver.check();
-    cout << "Result ----------> " << Result << "\n";
+    // cout << "Result ----------> " << Result << "\n";
     if (Result == z3::sat) {
       storeInput();
       printNewPathCondition(Vec);
@@ -71,7 +70,6 @@ void generateInput() {
  * ./dse [target] (iterations)
  */
 int main(int argc, char **argv) {
-  cout << "Start test...\n";
   if (argc < 2) {
     std::cerr << "usage: " << argv[0] << " [target] (iterations)" << std::endl;
     return 1;
@@ -86,19 +84,15 @@ int main(int argc, char **argv) {
   struct stat Buffer;
   int Iter = 0;
   while (Iter < MaxIter) {
-    cout << "Start while loop " << "Target is " << Target << "\n";
     int Ret = std::system(Target.c_str());
-    cout << "Start Ret condition check " << "Ret is " << Ret << "\n";
     if (Ret) {
       std::cout << "Crashing input found (" << Iter << " iters)" << std::endl;
       break;
     }
-    // cout << "Start stat()\n";
     if (stat(FormulaFile, &Buffer)) {
       std::cerr << FormulaFile << " not found" << std::endl;
       return 1;
     }
-    cout << "Before generate Input\n";
     generateInput();
     Iter++;
   }

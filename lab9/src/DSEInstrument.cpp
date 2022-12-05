@@ -87,7 +87,7 @@ void instrumentStore(Module *Mod, StoreInst *SI) {
   // auto Fun = Mod->getFunction(DSE_STORE_FUNCTION_NAME);
   // CallInst::Create(Fun, Args, "", SI);
   std::vector<Value *> Args = {SI->getPointerOperand()};
-
+  // std::vector<Value *> Args = {SI};
   auto Fun = Mod->getFunction(DSE_STORE_FUNCTION_NAME);
   CallInst::Create(Fun, Args, "", SI);
 }

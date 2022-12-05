@@ -16,9 +16,9 @@ z3::expr eval(z3::expr &E) {
     MemoryTy Mem = SI.getMemory();
     Address Register(E);
 
-    for (auto m: Mem) {
-      // std::cout << "Mem is like " << m.first << " -> " << m.second << "\n";
-    }
+    // for (auto m: Mem) {
+    //   // std::cout << "Mem is like " << m.first << " -> " << m.second << "\n";
+    // }
     if (Mem.find(Register) != Mem.end()) {
       return Mem.at(Register);
     } else {
@@ -53,7 +53,7 @@ extern "C" void __DSE_Store__(int *X) {
   Address Addr(X);
   z3::expr SE = eval(SI.getStack().top());
   SI.getStack().pop();
-  Mem.erase(Addr);
+  // Mem.erase(Addr);
   Mem.insert(std::make_pair(Addr, SE));
 }
 
@@ -68,8 +68,10 @@ extern "C" void __DSE_Store__(int *X) {
 extern "C" void __DSE_Load__(int Y, int *X) {
   MemoryTy &Mem = SI.getMemory();
   Address Register(Y);
-  z3::expr SE = SI.getContext().int_val((uintptr_t)X);
-  Mem.insert(std::make_pair(Register, SE));
+  Address Addr(X);
+  auto Src = Mem.at(Addr);
+  // Mem.erase(Addr);
+  Mem.insert(std::make_pair(Register, Src));
 }
 
 /**
@@ -86,11 +88,15 @@ extern "C" void __DSE_ICmp__(int R, int Op) {
   Address Addr(R);
   z3::expr SE2 = SI.getStack().top();
   SI.getStack().pop();
-  auto SE1 = SI.getStack().top(); // get Rx
+  auto SE1 = eval(SI.getStack().top()); // get Rx
+
+  // std::cout << "Print Mem ...\n";
+  // for (auto m: SI.getMemory()) {
+  //   std::cout << "Memory key -> " << m.first << "; Memory value -> " << m.second << "\n";
+  // }
 
   SI.getStack().pop();
   Mem.erase(Addr);
-  // std::cout << "DSE_ICMP inserts addr - " << Addr << " for SE1 - " << SE1 << " SE2 - " << SE2 << "\n";
   switch (Op) {
     case CmpInst::Predicate::ICMP_EQ:
       Mem.insert(std::make_pair(Addr, SE1 == SE2));
