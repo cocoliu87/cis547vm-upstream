@@ -52,11 +52,9 @@ void generateInput() {
     searchStrategy(Vec);
 
     for (const auto &E : Vec) {
-      // cout << "E in Vec " << E << "\n";
       Solver.add(E);
     }
     z3::check_result Result = Solver.check();
-    // cout << "Result ----------> " << Result << "\n";
     if (Result == z3::sat) {
       storeInput();
       printNewPathCondition(Vec);

@@ -6,10 +6,8 @@ using namespace std;
 
 std::ostream &operator<<(std::ostream &OS, const Address &A) {
   if (A.Type == A.Memory) {
-    // cout << "Operator print MEM addr " << A.Addr << "\n";
     OS << A.Addr;
   } else {
-    // cout << "Operator print Register addr " << A.Addr << "\n";
     OS << "R" << A.Addr;
   }
   return OS;
