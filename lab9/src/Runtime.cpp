@@ -59,7 +59,7 @@ extern "C" void __DSE_Store__(int *X) {
   Address Addr(X);
   z3::expr SE = eval(SI.getStack().top());
   SI.getStack().pop();
-  // Mem.erase(Addr);
+  Mem.erase(Addr);
   Mem.insert(std::make_pair(Addr, SE));
 }
 
