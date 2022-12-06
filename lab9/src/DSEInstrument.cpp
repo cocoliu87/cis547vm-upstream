@@ -19,6 +19,9 @@ static const char *DSE_BINOP_FUNCTION_NAME = "__DSE_BinOp__";
 const char *WHITESPACES = " \t\n\r";
 const size_t VARIABLE_PADDED_LEN = 8;
 
+/*
+* Coped this helper function from previous labs for debugging purpose
+*/
 std::string variable(const Value *Val) {
   std::string Code;
   raw_string_ostream SS(Code);
@@ -76,8 +79,10 @@ void instrumentAlloca(Module *Mod, AllocaInst *AI) {
  * @param SI Instrumentation location
  */
 void instrumentStore(Module *Mod, StoreInst *SI) {
+  // add the value into stack before calling Store instrumented
+  instrumentValue(Mod, SI->getOperand(0), SI);
+  // add the pointer of address to Args
   std::vector<Value *> Args = {SI->getPointerOperand()};
-  // std::vector<Value *> Args = {SI};
   auto Fun = Mod->getFunction(DSE_STORE_FUNCTION_NAME);
   CallInst::Create(Fun, Args, "", SI);
 }
@@ -149,6 +154,7 @@ void instrumentRegister(Module *Mod, Value *Var, Instruction *I) {
  */
 void instrumentValue(Module *Mod, Value *Val, Instruction *I) {
    auto Const = dyn_cast<ConstantInt>(Val);
+   // this function can handle instrument Const or register to push them to stack
    if (Const) {
     instrumentConstantValue(Mod, Const, I);
    } else {
@@ -165,15 +171,18 @@ void instrumentValue(Module *Mod, Value *Val, Instruction *I) {
  * @param CI Instrumentation location
  */
 void instrumentICmp(Module *Mod, ICmpInst *CI) {
+  // before istrument the inst we need to push both comparing operands to stack
   auto Op1 = CI->getOperand(0);
   auto Op2 = CI->getOperand(1);
   instrumentValue(Mod, Op1, CI);
   instrumentValue(Mod, Op2, CI);
 
-  CmpInst::Predicate P = CI->getPredicate();
   auto &Context = Mod->getContext();
   auto *Int32Type = Type::getInt32Ty(Context);
+  CmpInst::Predicate P = CI->getPredicate();
+  // get op kind
   auto PInt = ConstantInt::get(Int32Type, P);
+  // get the inst register ID
   auto RID = ConstantInt::get(Int32Type, getRegisterID(CI));
   std::vector<Value *> Args = {RID, PInt};
   auto Fn = Mod->getFunction(DSE_ICMP_FUNCTION_NAME);
@@ -191,10 +200,12 @@ void instrumentICmp(Module *Mod, ICmpInst *CI) {
 void instrumentBranch(Module *Mod, BranchInst *BI) {
   auto &Context = Mod->getContext();
   auto *Int32Type = Type::getInt32Ty(Context);
-  auto BID = ConstantInt::get(Int32Type, getBranchID(BI));
-  auto Fn = Mod->getFunction(DSE_BRANCH_FUNCTION_NAME);
 
-  Value *RID = ConstantInt::get(Int32Type, getRegisterID(BI->getOperand(0)));  
+  auto BID = ConstantInt::get(Int32Type, getBranchID(BI));
+  auto RID = ConstantInt::get(Int32Type, getRegisterID(BI->getOperand(0))); 
+
+  auto Fn = Mod->getFunction(DSE_BRANCH_FUNCTION_NAME);
+ 
   std::vector<Value *> Args = {BID, RID, BI->getCondition()};
   CallInst::Create(Fn, Args, "", BI);
 }
@@ -208,6 +219,7 @@ void instrumentBranch(Module *Mod, BranchInst *BI) {
  * @param BO Instrumentation location
  */
 void instrumentBinOp(Module *Mod, BinaryOperator *BO) {
+  // before instrument we need to push oprands to stack
   auto Op1 = BO->getOperand(0);
   auto Op2 = BO->getOperand(1);
   instrumentValue(Mod, Op1, BO);
@@ -242,7 +254,6 @@ void instrument(Module *Mod, Instruction *I) {
     instrumentAlloca(Mod, AI);
   } else if (StoreInst *SI = dyn_cast<StoreInst>(I)) {
     // TODO: Implement.
-    instrumentValue(Mod, SI->getOperand(0), SI);
     instrumentStore(Mod, SI);
   } else if (LoadInst *LI = dyn_cast<LoadInst>(I)) {
     // TODO: Implement.

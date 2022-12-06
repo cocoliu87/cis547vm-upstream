@@ -87,7 +87,6 @@ extern "C" void __DSE_Branch__(int BID, int RID, int B) {
   z3::expr SE = Mem.at(Addr);
   z3::expr Cond =
       B ? SI.getContext().bool_val(true) : SI.getContext().bool_val(false);
-  // cout << "In DSE_Branch, having BID - " << BID << " SE - " << SE << " Cond - " << Cond << "\n";
   SI.getPathCondition().push_back(std::make_pair(BID, SE == Cond));
 }
 

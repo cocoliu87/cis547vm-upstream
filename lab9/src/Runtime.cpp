@@ -25,6 +25,10 @@ z3::expr eval(z3::expr &E) {
   }
 }
 
+/*
+* this is a helper function to retrieve mapped value from the key of Address
+* this is basically copied from eval() but taking different argument's type
+*/
 z3::expr getFromMem(Address Addr) {
   MemoryTy Mem = SI.getMemory();
   if (Mem.find(Addr) != Mem.end()) {
@@ -57,6 +61,7 @@ extern "C" void __DSE_Alloca__(int R, int *Ptr) {
 extern "C" void __DSE_Store__(int *X) {
   MemoryTy &Mem = SI.getMemory();
   Address Addr(X);
+  // get the z3 expr we pushed before from stack
   z3::expr SE = eval(SI.getStack().top());
   SI.getStack().pop();
   Mem.erase(Addr);
@@ -76,8 +81,8 @@ extern "C" void __DSE_Load__(int Y, int *X) {
   Address Register(Y);
   Address Addr(X);
   // auto Src = Mem.at(Addr);
+  // instead of call at to get the value we want to call the helper function for error handling
   auto Src = getFromMem(Addr);
-  // Mem.erase(Addr);
   Mem.erase(Register);
   Mem.insert(std::make_pair(Register, Src));
 }
@@ -93,10 +98,11 @@ extern "C" void __DSE_Load__(int Y, int *X) {
 extern "C" void __DSE_ICmp__(int R, int Op) {
   MemoryTy &Mem = SI.getMemory();
   Address Addr(R);
+  // get the pushed z3 expr as operand of comparison
   z3::expr SE2 = SI.getStack().top();
   SI.getStack().pop();
+  // get the pushed z3 expr as operand of comparison
   auto SE1 = eval(SI.getStack().top());
-
   SI.getStack().pop();
   Mem.erase(Addr);
   switch (Op) {
@@ -138,37 +144,37 @@ extern "C" void __DSE_ICmp__(int R, int Op) {
 extern "C" void __DSE_BinOp__(int R, int Op) {
   MemoryTy &Mem = SI.getMemory();
   Address Addr(R);
+  // get the pushed z3 expr as operand of binary operation
   z3::expr SE2 = eval(SI.getStack().top());
-  // auto SE2 = SI.getStack().top();
   SI.getStack().pop();
+  // get the pushed z3 expr as operand of binary operation
   z3::expr SE1 = eval(SI.getStack().top());
-  // auto SE1 = SI.getStack().top();
   SI.getStack().pop();
   Mem.erase(Addr);
 
   switch (Op){
-      case Instruction::BinaryOps::Add:
-        Mem.insert(std::make_pair(Addr, SE1 + SE2));
-        break;
-      case Instruction::BinaryOps::Sub:
-        Mem.insert(std::make_pair(Addr, SE1 - SE2));
-        break;
-      case Instruction::BinaryOps::Mul:
-        Mem.insert(std::make_pair(Addr, SE1 * SE2));
-        break;
-      case Instruction::BinaryOps::SDiv:
-        Mem.insert(std::make_pair(Addr, SE1 / SE2));
-        break;
-      case Instruction::BinaryOps::UDiv:
-        Mem.insert(std::make_pair(Addr, udiv(SE1, SE2)));
-        break;
-      case Instruction::BinaryOps::SRem:
-        Mem.insert(std::make_pair(Addr, srem(SE1, SE2)));
-        break;
-      case Instruction::BinaryOps::URem:
-        Mem.insert(std::make_pair(Addr, urem(SE1, SE2)));
-        break;
-      default:
-        return;
-    }
+    case Instruction::BinaryOps::Add:
+      Mem.insert(std::make_pair(Addr, SE1 + SE2));
+      break;
+    case Instruction::BinaryOps::Sub:
+      Mem.insert(std::make_pair(Addr, SE1 - SE2));
+      break;
+    case Instruction::BinaryOps::Mul:
+      Mem.insert(std::make_pair(Addr, SE1 * SE2));
+      break;
+    case Instruction::BinaryOps::SDiv:
+      Mem.insert(std::make_pair(Addr, SE1 / SE2));
+      break;
+    case Instruction::BinaryOps::UDiv:
+      Mem.insert(std::make_pair(Addr, udiv(SE1, SE2)));
+      break;
+    case Instruction::BinaryOps::SRem:
+      Mem.insert(std::make_pair(Addr, srem(SE1, SE2)));
+      break;
+    case Instruction::BinaryOps::URem:
+      Mem.insert(std::make_pair(Addr, urem(SE1, SE2)));
+      break;
+    default:
+      return;
+  }
 }
